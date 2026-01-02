@@ -43,6 +43,7 @@ class PI0Config(PreTrainedConfig):
 
     # Flow matching parameters: see openpi `PI0Pytorch`
     num_inference_steps: int = 10  # Number of denoising steps during inference
+    num_steps: int = 10  # Alias for num_inference_steps (Hub compatibility)
     time_sampling_beta_alpha: float = 1.5
     time_sampling_beta_beta: float = 1.0
     time_sampling_scale: float = 0.999
@@ -60,6 +61,15 @@ class PI0Config(PreTrainedConfig):
 
     # Add empty images. Used to add empty cameras when no image features are present.
     empty_cameras: int = 0
+
+    # === Hub compatibility fields (for lerobot/pi0 model) ===
+    resize_imgs_with_padding: tuple[int, int] | None = None  # Image resize dimensions with padding, None to disable
+    adapt_to_pi_aloha: bool = False  # Aloha-specific adaptations
+    use_delta_joint_actions_aloha: bool = False  # Use delta joint actions for Aloha
+    proj_width: int = 1024  # Width of projection layers
+    use_cache: bool = True  # Use KV cache during inference
+    attention_implementation: str = "eager"  # Attention implementation type
+    train_state_proj: bool = True  # Whether to train state projection
 
     # Normalization
     normalization_mapping: dict[str, NormalizationMode] = field(

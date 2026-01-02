@@ -1046,6 +1046,18 @@ class PI0Policy(PreTrainedPolicy):
             # Load the remapped state dict into the model
             missing_keys, unexpected_keys = model.load_state_dict(remapped_state_dict, strict=strict)
 
+            # Tie embed_tokens weights to lm_head weights (PaliGemma uses shared embeddings)
+            # The checkpoint only stores lm_head.weight, so we need to tie them manually
+            try:
+                embed = model.model.paligemma_with_expert.paligemma.model.language_model.embed_tokens
+                lm_head = model.model.paligemma_with_expert.paligemma.lm_head
+                embed.weight = lm_head.weight
+                # Remove embed_tokens from missing_keys since we've now handled it
+                missing_keys = [k for k in missing_keys if "embed_tokens.weight" not in k]
+                print("Tied embed_tokens.weight to lm_head.weight (PaliGemma shared embeddings)")
+            except Exception as e:
+                logging.warning(f"Could not tie embedding weights: {e}")
+
             if missing_keys:
                 print(f"Missing keys when loading state dict: {len(missing_keys)} keys")
                 if len(missing_keys) <= 5:
@@ -1081,6 +1093,15 @@ class PI0Policy(PreTrainedPolicy):
         import re
 
         fixed_state_dict = {}
+
+        # Handle tied embeddings: copy lm_head.weight to embed_tokens.weight
+        # PaliGemma uses shared embeddings, but checkpoint only stores lm_head.weight
+        # Note: checkpoint keys already have "model." prefix
+        lm_head_key = "model.paligemma_with_expert.paligemma.lm_head.weight"
+        embed_tokens_key = "model.paligemma_with_expert.paligemma.model.language_model.embed_tokens.weight"
+        if lm_head_key in state_dict and embed_tokens_key not in state_dict:
+            state_dict[embed_tokens_key] = state_dict[lm_head_key]
+            print(f"Copied {lm_head_key} to {embed_tokens_key} (PaliGemma tied embeddings)")
 
         for key, value in state_dict.items():
             new_key = key
